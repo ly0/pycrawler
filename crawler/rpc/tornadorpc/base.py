@@ -7,6 +7,7 @@ Tornado framework. The classes in this library should not be used
 directly, but rather though the XML or JSON RPC implementations.
 You can use the utility functions like 'private' and 'start_server'.
 """
+import base64
 
 from tornado.web import RequestHandler
 import tornado.web
@@ -89,7 +90,6 @@ class BaseRPCParser(object):
                 return requests
         self.handler._requests = len(requests)
         for request in requests:
-            print 'INVOKED', request
             self.dispatch(request[0], request[1])
 
     def dispatch(self, method_name, params):
@@ -107,7 +107,6 @@ class BaseRPCParser(object):
         method_list = dir(method)
         method_list.sort()
         attr_tree = method_name.split('.')
-        print attr_tree
         try:
             for attr_name in attr_tree:
                 method = self.check_method(attr_name, method)
@@ -123,8 +122,28 @@ class BaseRPCParser(object):
             # No, no. That's private.
             return self.handler.result(self.faults.method_not_found())
 
+        def _request_auth(handler):
+            handler.set_header('WWW-Authenticate', 'Basic realm=tmr')
+            #handler.set_status(401)
+            return self.handler.result(self.faults.not_authorized())
+            #handler.finish()
+            #return False
+
         # HTTP Basic Authentication
-        print method
+        print self.handler.request.headers.get('Authorization')
+        if hasattr(method, '_need_authenticated'):
+            auth_func = getattr(method, '_need_authenticated')
+            auth_header = self.handler.request.headers.get('Authorization')
+            if auth_header is None:
+                return _request_auth(self.handler)
+            if not auth_header.startswith('Basic '):
+                return _request_auth(self.handler)
+
+            auth_decoded = base64.decodestring(auth_header[6:])
+            username, password = auth_decoded.split(':', 2)
+
+            if not auth_func(username, password):
+                return _request_auth(self.handler)
 
 
         args = []
@@ -308,7 +327,8 @@ class Faults(object):
         'method_not_found': -32601,
         'invalid_request': -32600,
         'invalid_params': -32602,
-        'internal_error': -32603
+        'internal_error': -32603,
+        'not_authorized': -32602
     }
 
     messages = {}

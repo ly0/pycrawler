@@ -24,27 +24,24 @@ def auth(username, password):
 
 from decorators.basicauth import authenticated
 
-import functools
+def authenticated(auth_func):
 
-def authtest(func):
-    class CallFunc(object):
-        def __init__(self, func, *args, **kwargs):
-            self._func = func
-            self.need_authenticated = True
-            self._args = args
-            self._kwargs = kwargs
+    def add_auth(func):
+        func._need_authenticated = auth_func
+        return func
 
-        def __call__(self, *args, **kwargs):
-            return self._func(*args, **kwargs)
+    return add_auth
 
-    def wrapper(*args, **kwargs):
-        foo = CallFunc(func)
-        return foo(*args, **kwargs)
-    return wrapper
+def testauth(username, password):
+    if username == 'test' and password == 'test2':
+        return True
+
+    return False
+
 
 class Carters(object):
 
-    @authtest
+    @authenticated(testauth)
     def category(self, slug):
         return {'msg': '%s has been lauched.' % slug}
 

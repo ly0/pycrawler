@@ -8,8 +8,9 @@ def authenticated2(auth):
         def _request_auth(handler):
             handler.set_header('WWW-Authenticate', 'Basic realm=tmr')
             handler.set_status(401)
-            handler.finish()
-            return False
+            #raise TypeError('test')
+            #handler.finish()
+            #return False
         
         @functools.wraps(f)            
         def new_f(*args):
