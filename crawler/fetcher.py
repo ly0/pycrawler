@@ -9,7 +9,7 @@ from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado import gen
 import cookies
 import requests
-from log import logger
+from log import fetch_logger
 
 
 class Fetcher(object):
@@ -83,21 +83,19 @@ class Fetcher(object):
         while True:
 
             self.pre_request(session, url=url, **kwargs)
-            print 'REQ', session.url
             try:
-                logger.info('{method} {url}'.format(method=session.method, url=session.url))
+                fetch_logger.info('{method} {url}'.format(method=session.method, url=session.url))
                 response = yield http_client.fetch(session)
-                logger.log_green('{code} {url}'.format(code=response.code, url=session.url))
+                fetch_logger.log_green('{code} {url}'.format(code=response.code, url=session.url))
                 break
             except HTTPError as httperr:
                 # redirects handler
                 if httperr.code > 300 and httperr.code < 400:
-                    logger.warning('{code} {url}'.format(code=httperr.code, url=session.url))
+                    fetch_logger.warning('{code} {url}'.format(code=httperr.code, url=session.url))
                     self.post_request(session, httperr.response, url, **kwargs)
-                    print httperr.response.headers
                     url = httperr.response.headers.get('Location')
                 else:
-                    logger.error(httperr)
+                    fetch_logger.error(httperr)
                     return
 
 

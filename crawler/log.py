@@ -5,7 +5,9 @@ import logging
 import copy
 import sys
 import time
-logger = logging.getLogger('pycrawler')
+fetch_logger = logging.getLogger('Fetcher')
+consumer_logger = logging.getLogger('Consumer')
+publisher_logger = logging.getLogger('Publisher')
 
 BLACK = 10001
 RED = 10002
@@ -18,15 +20,15 @@ WHITE = 10008
 HTTP_RESP = 20000
 
 # dynamic patch
-logger.log_black = lambda x: logger.log(BLACK, x)
-logger.log_red = lambda x: logger.log(RED, x)
-logger.log_green = lambda x: logger.log(GREEN, x)
-logger.log_yellow = lambda x: logger.log(YELLOW, x)
-logger.log_blue = lambda x: logger.log(BLUE, x)
-logger.log_magenta = lambda x: logger.log(MAGENTA, x)
-logger.log_cyan = lambda x: logger.log(CYAN, x)
-logger.log_white = lambda x: logger.log(WHITE, x)
-logger.log_http = lambda x: logger.log(HTTP_RESP, x)
+fetch_logger.log_black = lambda x: fetch_logger.log(BLACK, x)
+fetch_logger.log_red = lambda x: fetch_logger.log(RED, x)
+fetch_logger.log_green = lambda x: fetch_logger.log(GREEN, x)
+fetch_logger.log_yellow = lambda x: fetch_logger.log(YELLOW, x)
+fetch_logger.log_blue = lambda x: fetch_logger.log(BLUE, x)
+fetch_logger.log_magenta = lambda x: fetch_logger.log(MAGENTA, x)
+fetch_logger.log_cyan = lambda x: fetch_logger.log(CYAN, x)
+fetch_logger.log_white = lambda x: fetch_logger.log(WHITE, x)
+fetch_logger.log_http = lambda x: fetch_logger.log(HTTP_RESP, x)
 
 root_handler = None
 # Portable color codes from http://en.wikipedia.org/wiki/ANSI_escape_code#Colors.
@@ -177,6 +179,8 @@ class ColoredStreamHandler(logging.StreamHandler):
         parts = []
         if self.show_timestamps:
             parts.append(self.wrap_style(text='[%s]' % self.render_timestamp(record.created), color='green'))
+
+        parts.append(self.wrap_style(text=record.name, color='cyan'))
 
         parts.append(message)
         message = ' '.join(parts)
