@@ -101,10 +101,10 @@ class SixPM(BaseTask):
         self.rpc_handler.result('Start %s' % slug)
         self.slug = slug
         self.store_id = store_id
-        self.get_category_page()
+        self._get_category_page()
 
     @gen.coroutine
-    def get_category_page(self):
+    def _get_category_page(self):
         fetcher = Fetcher()
 
 
@@ -123,6 +123,21 @@ class SixPM(BaseTask):
         body = PQ(ret.body)
         products = body('.product')
         print products
+
+
+    @async
+    def crawl_page(self, url):
+        self.rpc_handler.result('Ok')
+        self._crawl_page(url)
+
+    @gen.coroutine
+    def _crawl_page(self, url):
+        fetcher = Fetcher()
+        ret = yield fetcher.fetch(url)
+        body = PQ(ret.body)
+        products = body('.product')
+        print len(products)
+
 
 
 
