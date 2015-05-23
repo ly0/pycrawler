@@ -8,6 +8,7 @@ directly, but rather though the XML or JSON RPC implementations.
 You can use the utility functions like 'private' and 'start_server'.
 """
 import base64
+import inspect
 
 from tornado.web import RequestHandler
 import tornado.web
@@ -16,6 +17,12 @@ import tornado.httpserver
 import types
 import traceback
 from .utils import getcallargs
+import sys
+
+sys.path.append('../../')
+
+from task import BaseTask
+from fetcher import Fetcher
 
 
 # Configuration element
@@ -100,28 +107,55 @@ class BaseRPCParser(object):
         Handler class. Currently supports only positional
         or keyword arguments, not mixed.
         """
+
+        INNER_METHOD = ['on_start', 'save', 'rpc_handler']
+        INNER_CLASS = [Fetcher]
+
+        if method_name == '__dir__':
+            self.handler.result([i for i in dir(self.handler)
+                                 if not inspect.isroutine(getattr(self.handler, i))
+                                 and isinstance(getattr(self.handler, i), BaseTask)
+                                 and i not in INNER_METHOD
+                                 ])
+            return
+
         if hasattr(RequestHandler, method_name):
             # Pre-existing, not an implemented attribute
             return self.handler.result(self.faults.method_not_found())
+
         method = self.handler
         method_list = dir(method)
         method_list.sort()
         attr_tree = method_name.split('.')
-        try:
-            for attr_name in attr_tree:
-                method = self.check_method(attr_name, method)
-        except AttributeError:
-            return self.handler.result(self.faults.method_not_found())
+
+        # check list method
+        if '__dir__' not in method_name:
+            try:
+                for attr_name in attr_tree:
+                    method = self.check_method(attr_name, method)
+            except AttributeError:
+                return self.handler.result(self.faults.method_not_found())
+        else:
+            for attr_name in attr_tree[:-1]:
+                if attr_name != '__dir__':
+                    method = self.check_method(attr_name, method)
+                else:
+                    break
+            self.handler.result([i for i in dir(method) if not i.startswith('_')
+                                 and not getattr(getattr(method, i), 'private', False)
+                                 and not inspect.isroutine(method)
+                                 and i not in INNER_METHOD
+                                 and not any([isinstance(getattr(method, i), cls) for cls in INNER_CLASS])])
+            return
 
         if not callable(method):
             # Not callable, so not a method
             return self.handler.result(self.faults.method_not_found())
 
-        if method_name.startswith('_') or \
+        if (method_name.startswith('_')) or \
                 getattr(method, 'private', False) is True:
             # No, no. That's private.
             return self.handler.result(self.faults.method_not_found())
-
         def _request_auth(handler):
             handler.set_header('WWW-Authenticate', 'Basic realm=tmr')
             #handler.set_status(401)
@@ -163,6 +197,9 @@ class BaseRPCParser(object):
         except TypeError:
             return self.handler.result(self.faults.invalid_params())
         try:
+            # Call method
+            # modified: pass self.handler to class of method
+            method.im_self.rpc_handler = self.handler
             response = method(*extra_args, **final_kwargs)
         except Exception:
             self.traceback(method_name, params)

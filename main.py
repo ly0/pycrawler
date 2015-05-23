@@ -63,6 +63,11 @@ class Fetcher(object):
             payload = urllib.urlencode(kwargs['data'])
             session.body = payload
 
+        # raw payload
+        if 'payload' in kwargs:
+            payload = urllib.urlencode(kwargs['payload'])
+            session.body = payload
+
         if session.method == "POST"and not session.body:
             session.body = " "
 

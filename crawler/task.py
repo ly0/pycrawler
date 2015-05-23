@@ -12,7 +12,7 @@ class BaseTask(object):
         self._exit()
 
     def on_start(self):
-        raise NotImplemented
+        pass
 
     def _exit(self):
         pass

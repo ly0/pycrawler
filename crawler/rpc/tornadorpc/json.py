@@ -30,6 +30,7 @@ class JSONRPCParser(BaseRPCParser):
             request_list.append(
                 (request['method'], request.get('params', []))
             )
+
         return tuple(request_list)
 
     def parse_responses(self, responses):

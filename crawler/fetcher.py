@@ -44,13 +44,13 @@ class Fetcher(object):
 
         # (payload) data
         if 'data' in kwargs:
-            if isinstance(kwargs['data'], dict):
+            if not isinstance(kwargs['data'], dict):
                 raise TypeError('Parameter data must be dict')
 
             payload = urllib.urlencode(kwargs['data'])
             session.body = payload
 
-        if session.method == "POST"and not session.body:
+        if session.method == "POST" and not session.body:
             session.body = " "
 
         # set default header
