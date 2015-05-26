@@ -19,10 +19,8 @@ import traceback
 from .utils import getcallargs
 import sys
 
-sys.path.append('../../')
-
-from task import BaseTask
-from fetcher import Fetcher
+from crawler.task import BaseTask
+from crawler.fetcher import Fetcher
 
 
 # Configuration element
