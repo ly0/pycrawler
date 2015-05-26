@@ -6,7 +6,9 @@ from consumer import Consumer
 from rpc.rpc_json import Handler
 from threading import Thread
 import inspect
-
+from pyquery import PyQuery as PQ
+import json
+import re
 
 w = Fetcher()
 
@@ -36,62 +38,86 @@ def authenticated(auth_func):
     return add_auth
 
 def testauth(username, password):
-    if username == 'test' and password == 'test2':
+    if username == 'ezbuy' and password == 'ezbuy88881111':
         return True
 
     return False
 
+
+def parse_url(url):
+    import urlparse
+    parser = urlparse.urlparse(url)
+    parsed_url = 'http://{netloc}{path}'.format(netloc=parser.netloc, path=parser.path)
+
+    ids = re.findall('[?&](id=[^&]+)', url)
+    if ids:
+        parsed_url = '%s?%s' % (parsed_url, '&'.join(ids))
+
+    return parsed_url
 
 class Carters(BaseTask):
 
 
     @authenticated(testauth)
     @async
-    def category(self, store_id, slug):
+    def category(self, slug, store_id, **kwargs):
         self.rpc_handler.result('Start %s' % slug)
         self.slug = slug
         self.store_id = store_id
         self.crawl_category()
+        self._extra_kwargs = kwargs
         #return {'msg': '%s has been lauched.' % slug}
 
     @gen.coroutine
     @private
     def crawl_category(self):
         fetcher = Fetcher()
-        from pyquery import PyQuery as PQ
-        import json
-
         kk = yield fetcher.fetch("http://www.carters.com/%s?startRow=0&sz=all" % self.slug)
         page = kk.body
+
+        self._process(page)
+
+
+    def _process(self, page):
         pq = PQ(page)
         data = []
         products = pq('li.grid-tile')
         for product in products:
             foo = PQ(product)
-            origin_price = foo('.product-standard-price').text().replace('MSRP:', '').replace('$', '').strip()
-            if not origin_price:
+            #origin_price = foo('.product-standard-price').text().replace('MSRP:', '').replace('$', '').strip()
+            origin_price = re.findall('[\d\.]+', foo('.product-standard-price').text())
+            sales_price = re.findall('[\d\.]+', foo('.product-sales-price').text())
+            if not origin_price or not sales_price:
                 continue
             data.append({'image': foo('img').attr('src'),
-                         'link': foo('.name-link').attr('href'),
+                         'link': parse_url(foo('.name-link').attr('href')),
                          'title': foo('.name-link').text(),
-                         'original_price': origin_price,
-                         'sales_price':foo('.product-sales-price').text().replace('$', '').strip()
+                         'original_price': origin_price[0],
+                         'sales_price': sales_price[0]
                          })
 
 
-
-        q = yield fetcher.fetch('http://127.0.0.1:8000/ezlookup/deal/?key=998998998', method="POST", data={
+        data = {
             'website': 'carters',
             'currency': 'USD',
             'country': 'USA',
             'store_id': self.store_id,
             'data': json.dumps(data)
-        })
+        }
+        data.update(self._extra_kwargs)
+
+        self._save(data)
+
+    @gen.coroutine
+    def _save(self, data):
+        fetcher = Fetcher()
+        q = yield fetcher.fetch('http://127.0.0.1:8000/ezlookup/deal/?key=998998998', method="POST", data=data)
+
+    @private
+    def crawl_url(self, url, store_id, **kwargs):
+        pass
 
 
-from pyquery import PyQuery as PQ
-import json
-import re
 
 class SixPM(BaseTask):
 
@@ -106,8 +132,6 @@ class SixPM(BaseTask):
     @gen.coroutine
     def _get_category_page(self):
         fetcher = Fetcher()
-
-
         ret = yield fetcher.fetch('http://www.6pm.com/%s' % self.slug)
         body = PQ(ret.body)
         foo = body('.last a')[0].get('href')
@@ -115,40 +139,65 @@ class SixPM(BaseTask):
         for i in range(max_page):
             self._crawl_category_page(i)
 
-    @gen.coroutine
     def _crawl_category_page(self, page):
-        fetcher = Fetcher()
         url = 'http://www.6pm.com/{slug}-page{page}/.zso?p={page}'.format(slug=self.slug, page=page)
-        ret = yield fetcher.fetch(url)
-        body = PQ(ret.body)
-        products = body('.product')
-        print products
+        self.crawl_url(url)
 
-
-    @async
-    def crawl_page(self, url):
-        self.rpc_handler.result('Ok')
-        self._crawl_page(url)
+    def crawl_url(self, url, store_id, **kwargs):
+        self.rpc_handler.result('Done')
+        self.store_id = store_id
+        self._crawl_url(url)
+        self._extra_kwargs = kwargs
 
     @gen.coroutine
-    def _crawl_page(self, url):
+    def _crawl_url(self, url):
         fetcher = Fetcher()
         ret = yield fetcher.fetch(url)
         body = PQ(ret.body)
-        products = body('.product')
-        print len(products)
+        products = body('a.product')
+
+        data = []
+        for product in products:
+            foo = PQ(product)
+            origin_price = re.findall('\$([\d\.]+)', foo('.discount').text())
+            if origin_price:
+                origin_price = origin_price[0]
+            sales_price = foo('.price-6pm').text().replace('$', '').strip()
+
+            if not origin_price and not sales_price:
+                continue
+            title = '[%s] %s' % (foo('.brandName').text(), foo('.productName').text())
+
+            data.append({'image': foo('.productImg').attr('src'),
+                         'link': parse_url('http://www.6pm.com' + foo('a').attr('href')),
+                         'title': title,
+                         'original_price': origin_price or sales_price,
+                         'sales_price': sales_price
+                         })
+
+        data = {
+            'website': '6pm',
+            'currency': 'USD',
+            'country': 'USA',
+            'store_id': self.store_id,
+            'data': json.dumps(data)
+        }
+        data.update(self._extra_kwargs)
+
+        q = yield fetcher.fetch('http://127.0.0.1:8000/ezlookup/deal/?key=998998998', method="POST", data=data)
 
 
 
 
 @gen.coroutine
 def run():
-    consumer = Consumer('amqp://guest:guest@localhost:5672/%2F', queue='text', routing_key='example.text')
+    consumer = Consumer('amqp://guest:guest@127.0.0.1:5672/%2F', queue='text', routing_key='example.text')
     consumer.run()
     print 'runed'
 #    kk = yield w.fetch("http://www.abercrombie.cn/on/demandware.store/Sites-abercrombie_cn-Site/en_CN/Product-Variation?pid=anf-87741&dwvar_anf-87741_4MPrmry=4080&dwvar_anf-87741_color=01&Quantity=1&format=ajax&_=1431591378963")
-    kk = yield w.fetch('http://127.0.0.1:8000')
-    kk = yield w.fetch('http://127.0.0.1:8000', method="POST", headers={'User-Agent':'FUCK'})
+    kk = yield w.fetch('http://www.carters.com/carters-baby-neutral-sets-little-layette-sets/V_121C933.html')
+
+    #kk = yield w.fetch('http://127.0.0.1:8000', method="POST", headers={'User-Agent':'FUCK'})
     Handler.carters = Carters()
     Handler.sixpm = SixPM()
     application.listen(WEBSERVER_PORT)
