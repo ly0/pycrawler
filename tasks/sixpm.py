@@ -54,9 +54,9 @@ class SixPM(BaseTask):
 
     @gen.coroutine
     def _crawl_url(self, url):
-        fetcher = Fetcher()
-        ret = yield fetcher.fetch(url)
-        body = PQ(ret.body)
+        ret = yield self.fetch(url, next=self._process)
+
+    def _process(self, body):
         products = body('a.product')
 
         data = []
@@ -87,4 +87,8 @@ class SixPM(BaseTask):
         }
         data.update(self._extra_kwargs)
 
-        q = yield fetcher.fetch('http://127.0.0.1:8000/ezlookup/deal/?key=998998998', method="POST", data=data)
+        self.save(data)
+
+    @gen.coroutine
+    def save(self, data):
+        q = yield self.fetch('http://127.0.0.1:8000/ezlookup/deal/?key=998998998', method="POST", data=data)

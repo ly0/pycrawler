@@ -1,8 +1,9 @@
 import json
-from pyquery import PyQuery as PQ
-
+from pyquery import PyQuery
 
 class Response(dict):
+    PQ = PyQuery
+
     def __init__(self, resp, data_type):
         self._resp = resp
         self._type = data_type
@@ -12,9 +13,12 @@ class Response(dict):
             self.body = resp.body
         self.code = resp.code
 
+        # Origin URL
+
+
     def __call__(self, csspath):
         if self._type == 'html':
-            return PQ(self.body)(csspath)
+            return PyQuery(self.body)(csspath)
         else:
             return self
 

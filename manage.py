@@ -39,7 +39,7 @@ for module in modules:
 
 # register tasks
 for k, v in TASK_LIST.items():
-    setattr(Handler, k.lower(), v)
+    setattr(Handler, k.lower(), v())
 
 
 
