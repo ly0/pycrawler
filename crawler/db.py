@@ -1,16 +1,6 @@
 import motor
-from tornado import gen
-from tornado import ioloop
+from .default_settings import *
 
-
-mongo_client = motor.MotorClient('localhost', 27017)
-
-
-@gen.coroutine
-def test():
-    ret = yield mongo_client.database_names()
-    print ret
-
-
-test()
-ioloop.IOLoop.instance().start()
+mongo_connection = motor.MotorClient('localhost', 27017)
+mongo_database = 'pycrawler'
+mongo_client = mongo_connection[mongo_database]

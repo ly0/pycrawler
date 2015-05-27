@@ -19,13 +19,9 @@ class Publisher(object):
     messages that have been sent and if they've been confirmed by RabbitMQ.
 
     """
-    EXCHANGE = 'message'
-    EXCHANGE_TYPE = 'topic'
-    PUBLISH_INTERVAL = 1
-    QUEUE = 'text'
-    ROUTING_KEY = 'example.text'
 
-    def __init__(self, amqp_url):
+    def __init__(self, amqp_url, queue, routing_key):
+    #def __init__(self, amqp_url):
         """Setup the example publisher object, passing in the URL we will use
         to connect to RabbitMQ.
 
@@ -41,6 +37,11 @@ class Publisher(object):
         self._stopping = False
         self._url = amqp_url
         self._closing = False
+        self.EXCHANGE = 'message'
+        self.EXCHANGE_TYPE = 'topic'
+        self.PUBLISH_INTERVAL = 1
+        self.QUEUE = queue
+        self.ROUTING_KEY = routing_key
 
     def connect(self):
         """This method connects to RabbitMQ, returning the connection handle.
@@ -302,7 +303,7 @@ class Publisher(object):
             'data': 'test',
             'id': str(uuid.uuid4())
         }
-        properties = pika.BasicProperties(app_id='example-publisher',
+        properties = pika.BasicProperties(app_id='pycrawler',
                                           content_type='application/json',
                                           headers=message)
 

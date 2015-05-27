@@ -1,21 +1,25 @@
 from tornado import gen
 from fetcher import Fetcher
 from response import Response
+from .db import mongo_client
+import logging
+import log
+
+
+class TaskMeta(type):
+    def __init__(cls, name, bases, attrs):
+        # init db connection
+        cls._db = mongo_client[name]
+        cls.logger = logging.getLogger('Task:%s' % name)
 
 class BaseTask(object):
+    __metaclass__ = TaskMeta
+
     def __init__(self):
         self.fetcher = Fetcher()
-        self._enter()
-
-    def _enter(self):
-        self.on_start()
-        self._exit()
 
     def on_start(self):
-        pass
-
-    def _exit(self):
-        pass
+        raise NotImplemented
 
     @gen.coroutine
     def fetch(self, url, next, data_type="html", **kwargs):
@@ -35,4 +39,8 @@ class BaseTask(object):
         :param data:
         :return:
         '''
-        raise NotImplemented()
+        if not isinstance(data, dict):
+            raise TypeError('data must be instance of dict')
+
+        result = yield self._db.insert(data)
+        self.logger.info("Saved: " + str(result))
