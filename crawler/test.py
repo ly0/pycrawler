@@ -195,7 +195,7 @@ def run():
     consumer.run()
     print 'runed'
 #    kk = yield w.fetch("http://www.abercrombie.cn/on/demandware.store/Sites-abercrombie_cn-Site/en_CN/Product-Variation?pid=anf-87741&dwvar_anf-87741_4MPrmry=4080&dwvar_anf-87741_color=01&Quantity=1&format=ajax&_=1431591378963")
-    kk = yield w.fetch('http://www.carters.com/carters-baby-neutral-sets-little-layette-sets/V_121C933.html')
+    kk = yield w.fetch('http://www.abercrombie.cn/en_CN/mens-shorts-twill-classic-fit/aandf-classic-fit-shorts/anf-87743.html?dwvar_anf-87743_color=01#ict=ICT%3ASUM15%3AM%3AHT%3A1%3AT%3ASEA%3AShorts&start=1')
 
     #kk = yield w.fetch('http://127.0.0.1:8000', method="POST", headers={'User-Agent':'FUCK'})
     Handler.carters = Carters()
