@@ -1,6 +1,6 @@
 from crawler.task import BaseTask
 from crawler.decorators.rpc.auth import authenticated
-from crawler.rpc.tornadorpc import async
+from crawler.rpc.tornadorpc import async, private
 from crawler.fetcher import Fetcher
 from crawler.decorators.tornado import gen
 from settings.functions import testauth as auth
@@ -92,3 +92,28 @@ class SixPM(BaseTask):
     @gen.coroutine
     def save(self, data):
         q = yield self.fetch('http://127.0.0.1:8000/ezlookup/deal/?key=998998998', method="POST", data=data)
+
+    @authenticated(auth)
+    @async
+    def update_product(self, url, **kwargs):
+        real_url = parse_url(url)
+        self.rpc_handler.result(True)
+        self._update_product(real_url, **kwargs)
+
+    @gen.coroutine
+    @private
+    def _update_product(self, url, **kwargs):
+        ret = yield self._fetcher.fetch(url)
+        body = PQ(ret.body)
+
+        data = {
+            'website': 'sixpm',
+            'currency': 'USD',
+            'title': body('title').text().replace('- 6pm.com', '').strip(),
+            'thumb': body('#detailImage img').attr('src'),
+            'price': re.findall('[\d\.]+', body('#priceSlot .price').text())[0],
+            'origin_price': re.findall('[\d\.]+', body('#priceSlot .oldPrice').text())[0]
+            }
+
+        data.update(kwargs)
+        q = yield self._fetcher.fetch('http://127.0.0.1:8000/ezlookup/product-update/?key=998998998', method="POST", data=data)

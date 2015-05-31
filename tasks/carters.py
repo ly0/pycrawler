@@ -31,6 +31,7 @@ class Carters(BaseTask):
         self.store_id = store_id
         self.crawl_category()
         self._extra_kwargs = kwargs
+        self._fetcher = Fetcher()
         #return {'msg': '%s has been lauched.' % slug}
 
     @gen.coroutine
@@ -71,8 +72,7 @@ class Carters(BaseTask):
 
     @gen.coroutine
     def save(self, data):
-        fetcher = Fetcher()
-        q = yield fetcher.fetch('http://127.0.0.1:8000/ezlookup/deal/?key=998998998', method="POST", data=data)
+        q = yield self._fetcher.fetch('http://127.0.0.1:8000/ezlookup/deal/?key=998998998', method="POST", data=data)
 
     @private
     def crawl_url(self, url, store_id, **kwargs):
@@ -82,3 +82,30 @@ class Carters(BaseTask):
         page = kk.body
 
         self._process(page)
+
+    @authenticated(testauth)
+    @async
+    def update_product(self, url, **kwargs):
+        real_url = parse_url(url)
+        self.rpc_handler.result(True)
+        self._update_product(real_url, **kwargs)
+
+    @gen.coroutine
+    @private
+    def _update_product(self, url, **kwargs):
+        ret = yield self._fetcher.fetch(url)
+        body = PQ(ret.body)
+
+        print body('#product-content .clearance')
+        data = {
+            'website': 'carters',
+            'currency': 'USD',
+            'title': body('title').text().replace(' | Carters.com', '').strip(),
+            'thumb': body('.primary-image').attr('src'),
+            'price': re.findall('[\d\.]+', body('#product-content span.price-standard').text())[0],
+            'origin_price': re.findall('[\d\.]+', body('.price-sales').text())[0]
+            }
+
+        data.update(kwargs)
+
+        q = yield self._fetcher.fetch('http://127.0.0.1:8000/ezlookup/product-update/?key=998998998', method="POST", data=data)
