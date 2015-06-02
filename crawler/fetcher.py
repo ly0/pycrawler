@@ -21,9 +21,10 @@ class Fetcher(object):
         # set cookies
         # 参数中已经提交了cookies
         cookie = cookies.dict_to_cookie(self.cookiejar)
-        req.headers.update({'Cookie': cookie})
+
         for k, v in kwargs.items():
             setattr(req, k, v)
+        req.headers.update({'Cookie': cookie})
 
 
     def post_request(self, req, resp, *args, **kwargs):

@@ -16,7 +16,7 @@ class TaskMeta(type):
 class BaseTask(object):
     __metaclass__ = TaskMeta
 
-    def __init__(self):
+    def __init__(self, max_connection=998):
         self._fetcher = Fetcher()
 
     def on_start(self):
