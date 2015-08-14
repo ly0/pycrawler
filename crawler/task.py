@@ -16,8 +16,8 @@ class TaskMeta(type):
 class BaseTask(object):
     __metaclass__ = TaskMeta
 
-    def __init__(self, max_connection=998):
-        self._fetcher = Fetcher()
+    def __init__(self):
+        self.fetcher = Fetcher()
 
     def on_start(self):
         raise NotImplemented
@@ -32,7 +32,7 @@ class BaseTask(object):
         :param data_type: html/json/xml
         :return:
         '''
-        ret = yield self._fetcher.fetch(url, **kwargs)
+        ret = yield self.fetcher.fetch(url, **kwargs)
 
         if next:
             # Use callback

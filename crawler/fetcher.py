@@ -21,15 +21,18 @@ class Fetcher(object):
         # set cookies
         # 参数中已经提交了cookies
         cookie = cookies.dict_to_cookie(self.cookiejar)
-
+        req.headers.update({'Cookie': cookie})
         for k, v in kwargs.items():
             setattr(req, k, v)
-        req.headers.update({'Cookie': cookie})
+
+        if cookie:
+            req.headers.update({'Cookie': cookie})
 
 
     def post_request(self, req, resp, *args, **kwargs):
+        pass
         # set cookies
-        cookies.make_cookiejar(self.cookiejar, req, resp)
+        #cookies.make_cookiejar(self.cookiejar, req, resp)
 
     def init_request(self, session, url, **kwargs):
         req = session
@@ -48,7 +51,8 @@ class Fetcher(object):
             if not isinstance(kwargs['data'], dict):
                 raise TypeError('Parameter data must be dict')
 
-            payload = urllib.urlencode(kwargs['data'])
+            encoded_data = dict((k, v if not isinstance(v, unicode) else v.encode('utf-8')) for k, v in kwargs['data'].items())
+            payload = urllib.urlencode(encoded_data)
             session.body = payload
 
         if session.method == "POST" and not session.body:
@@ -94,10 +98,14 @@ class Fetcher(object):
                 if httperr.code > 300 and httperr.code < 400:
                     fetch_logger.warning('{code} {url}'.format(code=httperr.code, url=session.url))
                     self.post_request(session, httperr.response, url, **kwargs)
-                    url = httperr.response.headers.get('Location')
+                    if not kwargs.get('disabled_redirect'):
+                        url = httperr.response.headers.get('Location')
+                    else:
+                        fetch_logger.debug(httperr)
+                        raise gen.Return(httperr.response)
                 else:
                     fetch_logger.error(httperr)
-                    return
+                    raise httperr
 
 
         del instance_parameters
